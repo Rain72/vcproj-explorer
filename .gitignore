@@ -2,3 +2,5 @@
 /package-lock.json
 /.eslintrc.json
 /.vscodeignore
+/node_modules
+/out
