@@ -6,21 +6,26 @@ import * as _ from "underscore";
 export type VcprojViewItemContextValue = 'FILE' | 'FILTER';
 
 export class VcprojViewItem extends vscode.TreeItem {
+    public readonly fileUri: string = '';
+
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly contextValue: VcprojViewItemContextValue,      
-        tooltipText?: string,
-        public readonly filter?: VcprojFile.Filter
+        public readonly contextValue: VcprojViewItemContextValue,
+        root: string,      
+        public readonly relativePath: string,
+        public readonly filter?: VcprojFile.Filter,
+        public readonly parent?: VcprojViewItem
       ) {
         super(label, collapsibleState);
-        this.tooltip = tooltipText;
+        this.tooltip = relativePath;
+        this.fileUri = path.normalize(root + '/' + (relativePath || ''));
       }
 }
 
 export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<VcprojViewItem> {
     protected file: VcprojFile = undefined;
-    protected root: String = '';
+    protected root: string = '';
     private treeDataEventEmitter = new vscode.EventEmitter<VcprojViewItem | void>();
     public readonly onDidChangeTreeData: vscode.Event<VcprojViewItem | void> = this.treeDataEventEmitter.event;
     protected goIntoFilter: VcprojFile.Filter = undefined;
@@ -36,18 +41,22 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         return element;
     }
 
-    async getChildren(element?: VcprojViewItem): Promise<VcprojViewItem[]> {
-        if (element) {
-            return Promise.resolve(this.getViewItem(element.filter));
-        }
-        if (this.goIntoFilter) {
-            return Promise.resolve(this.getViewItem(this.goIntoFilter));
-        }
-        const data = await this.file.ParseXml();
-        return Promise.resolve(this.getViewItem(this.file.getFiles()));
+    public getParent(element: VcprojViewItem): VcprojViewItem {
+        return element.parent;
     }
 
-    private getViewItem(files: VcprojFile.Files | VcprojFile.Filter): VcprojViewItem[] {
+    async getChildren(element?: VcprojViewItem): Promise<VcprojViewItem[]> {
+        if (element) {
+            return Promise.resolve(this.getViewItem(element.filter, element));
+        }
+        if (this.goIntoFilter) {
+            return Promise.resolve(this.getViewItem(this.goIntoFilter, element));
+        }
+        const data = await this.file.ParseXml();
+        return Promise.resolve(this.getViewItem(this.file.getFiles(), element));
+    }
+
+    private getViewItem(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
         let viewItems: VcprojViewItem[] = [];
         
         if (files?.Filter && !_.isArray(files.Filter))
@@ -61,8 +70,10 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                         v.attr?.Name,
                         vscode.TreeItemCollapsibleState.Collapsed,
                         'FILTER',
+                        this.root,
                         undefined,
-                        v
+                        v,
+                        parent
                     )
                 );
             }
@@ -78,13 +89,15 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                     path.basename(v.attr?.RelativePath),
                     vscode.TreeItemCollapsibleState.None,
                     'FILE',
-                    v.attr?.RelativePath
+                    this.root,
+                    v.attr?.RelativePath,
+                    undefined,
+                    parent
                 );
-                let fileUri = path.normalize(this.root + '/' + v.attr?.RelativePath);
                 fileItem.command = {
                     command: 'vcprojExplorer.openFile',
                     title: "Open File",
-                    arguments: [fileUri], 
+                    arguments: [fileItem.fileUri], 
                 };
                 viewItems.push(fileItem);
             }
@@ -108,6 +121,21 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         this.goIntoFilter = undefined;
         this.treeDataEventEmitter.fire();
     }
+
+    public async find(fileName: string, element ?: VcprojViewItem): Promise<VcprojViewItem> {
+        let children = await this.getChildren(element);
+        for (let viewItem of children) {
+            if (viewItem.contextValue == 'FILTER')
+            {
+                let find = await this.find(fileName, viewItem);
+                if (!find)
+                    continue;
+                return find;
+            }
+            else if (viewItem.fileUri != fileName)
+                continue;
+            return viewItem;
+        }
+    }
+
 }
-
-

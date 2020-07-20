@@ -4,6 +4,9 @@ import * as vscode from 'vscode';
 import { VcprojFileTreeDataProvider, VcprojViewItem } from './vcprojTreeDataProvider';
 import * as Path from 'path';
 
+let vcprojExplorer: vscode.TreeView<VcprojViewItem> = null;
+let vcprojTreeDataProvider: VcprojFileTreeDataProvider = null;
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -15,8 +18,6 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.commands.executeCommand("setContext", "vcprojView.enable", true);
 	
 	const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
-	let vcprojExplorer: vscode.TreeView<VcprojViewItem> = null;
-	let vcprojTreeDataProvider: VcprojFileTreeDataProvider = null;
 
 	const vcprojPathEventEmitter = new vscode.EventEmitter<string>();
 	vcprojPathEventEmitter.event(async (vcprojPath) => {
@@ -34,7 +35,8 @@ export function activate(context: vscode.ExtensionContext) {
                 canSelectMany: false,
             }
         );
-        vcprojExplorer.title += `(${Path.basename(path)})`;
+		vcprojExplorer.title += `(${Path.basename(path)})`;
+		setViewItemFocus();
 	});
 
 	vscode.commands.registerCommand('vcprojExplorer.openVcproj', async () => {
@@ -64,6 +66,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			vcprojTreeDataProvider.goInto(value.label, value.filter);
 			vscode.commands.executeCommand("setContext", "vcprojView.goInto", true);
+			setViewItemFocus();
 		}
 	);
 	vscode.commands.registerCommand("vcprojExplorer.goHome",
@@ -73,8 +76,22 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	);
 
+	vscode.window.onDidChangeActiveTextEditor( async (e) => {
+		setViewItemFocus(e.document.fileName);
+	});
+	
 	vcprojPathEventEmitter.fire(vscode.workspace.getConfiguration("vcprojexplorer").get('file'));
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() {}
+
+
+async function setViewItemFocus(fileUri?: string) : Promise<void> {
+	if (!vcprojTreeDataProvider)
+		return;
+	let viewItem = await vcprojTreeDataProvider.find(fileUri || vscode.window.activeTextEditor.document.fileName);
+	if (!viewItem)
+		return;
+	vcprojExplorer.reveal(viewItem, { focus: true });
+}
