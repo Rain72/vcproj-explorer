@@ -6,6 +6,7 @@ import * as Path from 'path';
 
 let vcprojExplorer: vscode.TreeView<VcprojViewItem> = null;
 let vcprojTreeDataProvider: VcprojFileTreeDataProvider = null;
+let nextViewItemFocus: boolean = false;
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -36,7 +37,9 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 		vcprojExplorer.title += `(${Path.basename(path)})`;
-		setViewItemFocus();
+		vcprojExplorer.onDidChangeVisibility((e) => {
+			setViewItemSelected();
+		});
 	});
 
 	vscode.commands.registerCommand('vcprojExplorer.openVcproj', async () => {
@@ -57,7 +60,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	vscode.commands.registerCommand('vcprojExplorer.openFile', async (resource) => {
 		let doc = await vscode.workspace.openTextDocument(resource); // calls back into the provider
-		await vscode.window.showTextDocument(doc);
+		nextViewItemFocus = true;
+		vscode.window.showTextDocument(doc);
 	});
 	vscode.commands.registerCommand("vcprojExplorer.goInto",
 		(value: VcprojViewItem) => {
@@ -66,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 			vcprojTreeDataProvider.goInto(value.label, value.filter);
 			vscode.commands.executeCommand("setContext", "vcprojView.goInto", true);
-			setViewItemFocus();
+			setViewItemSelected();
 		}
 	);
 	vscode.commands.registerCommand("vcprojExplorer.goHome",
@@ -77,9 +81,9 @@ export function activate(context: vscode.ExtensionContext) {
 	);
 
 	vscode.window.onDidChangeActiveTextEditor( async (e) => {
-		setViewItemFocus(e.document.fileName);
+		setViewItemSelected(e.document.fileName);
 	});
-	
+
 	vcprojPathEventEmitter.fire(vscode.workspace.getConfiguration("vcprojexplorer").get('file'));
 }
 
@@ -87,11 +91,13 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {}
 
 
-async function setViewItemFocus(fileUri?: string) : Promise<void> {
-	if (!vcprojTreeDataProvider)
+async function setViewItemSelected(fileUri?: string) : Promise<void> {
+	let focus = nextViewItemFocus;
+	nextViewItemFocus = false;
+	if (!vcprojTreeDataProvider || !vcprojExplorer?.visible)
 		return;
 	let viewItem = await vcprojTreeDataProvider.find(fileUri || vscode.window.activeTextEditor.document.fileName);
 	if (!viewItem)
 		return;
-	vcprojExplorer.reveal(viewItem, { focus: true });
+	vcprojExplorer.reveal(viewItem, { focus });
 }
