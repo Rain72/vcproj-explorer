@@ -77,6 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
 		() => {
 			vcprojTreeDataProvider.goHome();
 			vscode.commands.executeCommand("setContext", "vcprojView.goInto", false);
+			setViewItemSelected();
 		}
 	);
 
