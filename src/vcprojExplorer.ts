@@ -103,4 +103,4 @@ export class VcprojExplorer {
 }
 
 
-export default this;
+export default VcprojExplorer;
