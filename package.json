@@ -4,7 +4,7 @@
 	"publisher": "Rain72",
 	"repository": "https://github.com/Rain72/vcproj-explorer/",
 	"description": "VSCode extension for opening VS2008 project",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
