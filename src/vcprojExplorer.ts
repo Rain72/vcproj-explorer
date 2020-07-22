@@ -16,7 +16,7 @@ export class VcprojExplorer {
     public static init(): void {
         this.rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
 
-        vscode.commands.registerCommand('this.openVcproj', async () => {
+        vscode.commands.registerCommand('vcprojExplorer.openVcproj', async () => {
             await this.cmdSetVcprojPath();
             this.openVcropj();
         });
