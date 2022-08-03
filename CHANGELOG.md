@@ -4,6 +4,10 @@ All notable changes to this extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.5]
+- Add Refresh
+- Refactor "Go Into"
+
 ## [0.0.4]
 - Fix "Open Vcproj" button not working
 

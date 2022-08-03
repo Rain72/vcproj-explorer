@@ -4,7 +4,7 @@
 	"publisher": "Rain72",
 	"repository": "https://github.com/Rain72/vcproj-explorer/",
 	"description": "VSCode extension for opening VS2008 project",
-	"version": "0.0.4",
+	"version": "0.0.5",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -31,7 +31,13 @@
 			},
 			{
 				"command": "vcprojExplorer.goHome",
-				"title": "Home"
+				"title": "Home",
+				"icon": "$(home)"
+			},
+			{
+				"command": "vcprojExplorer.refresh",
+				"title": "Refresh",
+				"icon": "$(refresh)"
 			}
 		],
 		"views": {
@@ -54,6 +60,11 @@
 				{
 					"command": "vcprojExplorer.goHome",
 					"when": "view == vcprojView && vcprojView.goInto",
+					"group": "navigation"
+				},
+				{
+					"command": "vcprojExplorer.refresh",
+					"when": "view == vcprojView",
 					"group": "navigation"
 				}
 			],

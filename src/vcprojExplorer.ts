@@ -23,6 +23,7 @@ export class VcprojExplorer {
         vscode.commands.registerCommand('vcprojExplorer.openFile', this.cmdOpenFile.bind(this));
         vscode.commands.registerCommand("vcprojExplorer.goInto", this.goInto.bind(this));
         vscode.commands.registerCommand("vcprojExplorer.goHome", this.goHome.bind(this));
+        vscode.commands.registerCommand("vcprojExplorer.refresh", this.refresh.bind(this));
 
         vscode.window.onDidChangeActiveTextEditor((e) => { this.setViewItemSelected(e.document.fileName); });
 
@@ -70,6 +71,7 @@ export class VcprojExplorer {
                 canSelectMany: false,
             }
         );
+        await this.vcprojTreeDataProvider.refresh(); // init refresh
         this.vcprojExplorer.title += `(${Path.basename(path)})`;
         this.vcprojExplorer.onDidChangeVisibility((e) => {
             this.setViewItemSelected();
@@ -89,7 +91,7 @@ export class VcprojExplorer {
         if (value == null || !value.filter) {
             return;
         }
-        this.vcprojTreeDataProvider.goInto(value.label, value.filter);
+        this.vcprojTreeDataProvider.goInto(value);
         vscode.commands.executeCommand("setContext", "vcprojView.goInto", true);
         this.setViewItemSelected();
     }
@@ -100,6 +102,11 @@ export class VcprojExplorer {
         this.setViewItemSelected();
     }
 
+    private static refresh(value: VcprojViewItem): void {
+        this.vcprojTreeDataProvider.refresh();
+        this.setViewItemSelected();
+    }
+    
 }
 
 

@@ -28,7 +28,6 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
     protected root: string = '';
     private treeDataEventEmitter = new vscode.EventEmitter<VcprojViewItem | void>();
     public readonly onDidChangeTreeData: vscode.Event<VcprojViewItem | void> = this.treeDataEventEmitter.event;
-    protected goIntoFilter: VcprojFile.Filter = undefined;
     
     constructor(
         public readonly vcprojFilePath: string
@@ -49,11 +48,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         if (element) {
             return Promise.resolve(this.getViewItem(element.filter, element));
         }
-        if (this.goIntoFilter) {
-            return Promise.resolve(this.getViewItem(this.goIntoFilter, element));
-        }
-        const data = await this.file.ParseXml();
-        return Promise.resolve(this.getViewItem(this.file.getFiles(), element));
+        return Promise.resolve(this.getViewItem(this.file.get(), element));
     }
 
     private getViewItem(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
@@ -106,19 +101,31 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         return viewItems;
     }
 
-    public goInto(parentsLable:string, filter: VcprojFile.Filter): void {
-        if (!filter) {
+    public goInto(value: VcprojViewItem): void {
+        if (!value) {
             return;
         }
-        this.goIntoFilter = {
-            attr: { Name: parentsLable },
-            Filter: [filter]
-        };
+        this.file.goInto(this.getPath(value));
         this.treeDataEventEmitter.fire();
+    }
+
+    protected getPath(value: VcprojViewItem): string[] {
+        let path: string[] = [];
+        let element: VcprojViewItem = value;
+        while (!_.isUndefined(element?.filter?.attr?.Name)) {
+            path.push(element.filter.attr.Name);
+            element = element.parent;
+        }
+        return path.reverse();
     }
     
     public goHome(): void {
-        this.goIntoFilter = undefined;
+        this.file.clearInto();
+        this.treeDataEventEmitter.fire();
+    }
+
+    public async refresh(): Promise<void> {
+        await this.file.ParseXml();
         this.treeDataEventEmitter.fire();
     }
 
