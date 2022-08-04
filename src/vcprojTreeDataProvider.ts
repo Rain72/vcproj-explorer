@@ -51,36 +51,31 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         return Promise.resolve(this.getViewItem(this.file.get(), element));
     }
 
-    private getViewItem(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
-        let viewItems: VcprojViewItem[] = [];
-        
-        if (files?.Filter && !_.isArray(files.Filter))
-            files.Filter = [(files.Filter as VcprojFile.Filter)];
-        if (_.isArray(files?.Filter))
-        {
-            const sortData = files.Filter.sort((a, b) => a.attr?.Name.toLowerCase() >= b.attr?.Name.toLowerCase() ? 1 : -1);
-            for (let v of sortData) {
-                viewItems.push(
-                    new VcprojViewItem(
-                        v.attr?.Name,
-                        vscode.TreeItemCollapsibleState.Collapsed,
-                        'FILTER',
-                        this.root,
-                        undefined,
-                        v,
-                        parent
-                    )
-                );
-            }
-        }
+    private genViewItemFilter(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
+        if (_.isUndefined(files?.Filter))
+            return [];
+        _.isArray(files.Filter) || (files.Filter = [(files.Filter as VcprojFile.Filter)]);
+        return files.Filter
+            .sort((a, b) => a.attr?.Name.toLowerCase() >= b.attr?.Name.toLowerCase() ? 1 : -1)
+            .map((v) => new VcprojViewItem(
+                v.attr?.Name,
+                vscode.TreeItemCollapsibleState.Collapsed,
+                'FILTER',
+                this.root,
+                undefined,
+                v,
+                parent
+            ));
+    }
 
-        if (files?.File && !_.isArray(files.File))
-            files.File = [(files.File as VcprojFile.File)];
-        if (_.isArray(files?.File))
-        {
-            const sortData = files.File.sort((a, b) => a.attr?.RelativePath.toLowerCase() >= b.attr?.RelativePath.toLowerCase() ? 1 : -1);
-            for (let v of sortData) {
-                let fileItem = new VcprojViewItem(
+    private genViemItemFile(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
+        if (_.isUndefined(files?.File))
+            return [];
+        _.isArray(files.File) || (files.File = [(files.File as VcprojFile.File)]);
+        return files.File
+            .sort((a, b) => a.attr?.RelativePath.toLowerCase() >= b.attr?.RelativePath.toLowerCase() ? 1 : -1)
+            .map((v) => {
+                let fileItem =  new VcprojViewItem(
                     path.basename(v.attr?.RelativePath),
                     vscode.TreeItemCollapsibleState.None,
                     'FILE',
@@ -92,13 +87,16 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                 fileItem.command = {
                     command: 'vcprojExplorer.openFile',
                     title: "Open File",
-                    arguments: [fileItem.fileUri], 
+                    arguments: [fileItem.fileUri],
                 };
-                viewItems.push(fileItem);
-            }
-        }
+                return fileItem;
+            });
+    }
 
-        return viewItems;
+
+    private getViewItem(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
+        return this.genViewItemFilter(files, parent)
+                .concat(this.genViemItemFile(files, parent));
     }
 
     public goInto(value: VcprojViewItem): void {
