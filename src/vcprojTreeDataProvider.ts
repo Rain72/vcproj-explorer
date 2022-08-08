@@ -85,7 +85,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         else {
             return false;
         }
-        return this.favoriteMap[paths.join('_')] == true;
+        return this.favoriteMap[paths.join('/')] == true;
     }
 
     private genViewItemFilter(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
@@ -212,18 +212,18 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
     public addFavorite(paths: string[]) : void {
         if (paths.length <= 0)
             return;
-        const path = paths.join('_');
+        const path = paths.join('/');
         this.favoriteMap[path] = true;
     }
 
     public removeFavorite(paths: string[]) : void {
         if (paths.length <= 0)
             return;
-        const path = paths.join('_');
+        const path = paths.join('/');
         delete this.favoriteMap[path];
     }
 
-    public async favorite(element: VcprojViewItem): Promise<void> {
+    public favorite(element: VcprojViewItem): void {
         const paths = this.getPath(element);
         if (element.IsFavorite())
             this.removeFavorite(paths);
@@ -240,6 +240,10 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         this.view = VIEW.FAVORITE;
         this.file.clearInto();
         this.treeDataEventEmitter.fire();
+    }
+
+    public getFavorite(): String[] {
+        return Object.keys(this.favoriteMap);
     }
 
 }

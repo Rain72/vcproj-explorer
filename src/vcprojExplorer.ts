@@ -31,6 +31,7 @@ export class VcprojExplorer {
         vscode.window.onDidChangeActiveTextEditor((e) => { this.setViewItemSelected(e.document.fileName); });
 
         await this.openVcropj();
+        this.loadFavorite();
         
         vscode.commands.executeCommand("setContext", "vcprojView.enable", true);
         vscode.commands.executeCommand("setContext", "vcprojView.view", this.vcprojTreeDataProvider.getView(true));
@@ -121,6 +122,14 @@ export class VcprojExplorer {
 
     private static favorite(value: VcprojViewItem): void {
         this.vcprojTreeDataProvider.favorite(value);
+        vscode.workspace.getConfiguration("vcprojexplorer")
+            .update('favorite', this.vcprojTreeDataProvider.getFavorite());
+    }
+
+    private static loadFavorite(): void {
+        const favorite: string[] = vscode.workspace.getConfiguration("vcprojexplorer").get('favorite');
+        for (let path of favorite)
+            this.vcprojTreeDataProvider.addFavorite([path]);
     }
 }
 

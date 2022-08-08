@@ -113,6 +113,11 @@
 					"type": "string",
 					"default": "",
 					"description": ".vcproj File Path"
+				},
+				"vcprojexplorer.favorite":{
+					"type": "array",
+					"default": "",
+					"description": "favorite array"
 				}
 			}
 		}
