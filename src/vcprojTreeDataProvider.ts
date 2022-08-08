@@ -3,7 +3,12 @@ import {VcprojFile} from './vcprojFileParser';
 import * as path from "path";
 import * as _ from "underscore";
 
-export type VcprojViewItemContextValue = 'FILE' | 'FILTER';
+export type VcprojViewItemContextValue = 'FILE' | 'FILTER' | 'FAV_FILE' | 'FAV_FILTER';
+export enum VIEW {
+    HOME,
+    GO_INTO,
+    FAVORITE,
+};
 
 export class VcprojViewItem extends vscode.TreeItem {
     public readonly fileUri: string = '';
@@ -11,7 +16,7 @@ export class VcprojViewItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-        public readonly contextValue: VcprojViewItemContextValue,
+        public contextValue: VcprojViewItemContextValue,
         root: string,      
         public readonly relativePath: string,
         public readonly filter?: VcprojFile.Filter,
@@ -20,7 +25,21 @@ export class VcprojViewItem extends vscode.TreeItem {
         super(label, collapsibleState);
         this.tooltip = relativePath;
         this.fileUri = path.normalize(root + '/' + (relativePath || ''));
+        if (this.IsFavorite())
+            this.iconPath = new vscode.ThemeIcon('pin');
       }
+    
+    public IsFavorite(): boolean {
+        return this.contextValue == 'FAV_FILE' || this.contextValue == 'FAV_FILTER';
+    }
+
+    public IsFile(): boolean {
+        return this.contextValue == 'FAV_FILE' || this.contextValue == 'FILE';
+    }
+
+    public IsFilter(): boolean {
+        return this.contextValue == 'FAV_FILTER' || this.contextValue == 'FILTER';
+    }
 }
 
 export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<VcprojViewItem> {
@@ -28,7 +47,9 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
     protected root: string = '';
     private treeDataEventEmitter = new vscode.EventEmitter<VcprojViewItem | void>();
     public readonly onDidChangeTreeData: vscode.Event<VcprojViewItem | void> = this.treeDataEventEmitter.event;
-    
+    private favoriteMap: { [key: string]: true } = {};
+    protected view : VIEW = VIEW.HOME;
+        
     constructor(
         public readonly vcprojFilePath: string
     ) {
@@ -50,6 +71,22 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         }
         return Promise.resolve(this.getViewItem(this.file.get(), element));
     }
+    
+    private IsFavorite(files: VcprojFile.File | VcprojFile.Filter, parent: VcprojViewItem): boolean {
+        if (_.isUndefined(files.attr))
+            return false;
+        let paths = this.getPath(parent);
+        if ('Name' in files.attr) {
+            paths = paths.concat(files.attr.Name);
+        }
+        else if ('RelativePath' in files.attr) {
+            paths = paths.concat(path.basename(files.attr.RelativePath));
+        }
+        else {
+            return false;
+        }
+        return this.favoriteMap[paths.join('_')] == true;
+    }
 
     private genViewItemFilter(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
         if (_.isUndefined(files?.Filter))
@@ -60,7 +97,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
             .map((v) => new VcprojViewItem(
                 v.attr?.Name,
                 vscode.TreeItemCollapsibleState.Collapsed,
-                'FILTER',
+                this.IsFavorite(v, parent) ? 'FAV_FILTER' :'FILTER',
                 this.root,
                 undefined,
                 v,
@@ -78,7 +115,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                 let fileItem =  new VcprojViewItem(
                     path.basename(v.attr?.RelativePath),
                     vscode.TreeItemCollapsibleState.None,
-                    'FILE',
+                    this.IsFavorite(v, parent) ? 'FAV_FILE' :'FILE',
                     this.root,
                     v.attr?.RelativePath,
                     undefined,
@@ -95,29 +132,58 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
 
 
     private getViewItem(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
-        return this.genViewItemFilter(files, parent)
-                .concat(this.genViemItemFile(files, parent));
+        let item = this.genViewItemFilter(files, parent)
+            .concat(this.genViemItemFile(files, parent));
+        if (this.view == VIEW.FAVORITE) {
+            return this.filterFavorite(item, parent);
+        }
+        return item;
+    }
+
+    private filterFavorite(viewItem:VcprojViewItem[], parent: VcprojViewItem): VcprojViewItem[] {
+        if (parent && parent.IsFavorite())
+            return viewItem;
+        let passItem: VcprojViewItem[] = [];
+        for (let item of viewItem) {
+            if (item.IsFavorite()) {
+                passItem.push(item);
+                continue;
+            }
+            
+            // check FAVORITE in FILTER
+            if (!item.IsFilter()) 
+                continue;
+            let subItem = this.genViewItemFilter(item.filter, item)
+                            .concat(this.genViemItemFile(item.filter, item));
+            passItem = passItem.concat(this.filterFavorite(subItem, undefined)); //recursive
+        }
+        return passItem;
     }
 
     public goInto(value: VcprojViewItem): void {
         if (!value) {
             return;
         }
+        this.view = VIEW.GO_INTO;
         this.file.goInto(this.getPath(value));
         this.treeDataEventEmitter.fire();
     }
 
     protected getPath(value: VcprojViewItem): string[] {
-        let path: string[] = [];
-        let element: VcprojViewItem = value;
+        if (_.isUndefined(value))
+            return [];
+        let paths: string[] = [];
+        paths.push(value.IsFile() ? path.basename(value.relativePath) : value.filter.attr.Name);
+        let element: VcprojViewItem = value.parent;
         while (!_.isUndefined(element?.filter?.attr?.Name)) {
-            path.push(element.filter.attr.Name);
+            paths.push(element.filter.attr.Name);
             element = element.parent;
         }
-        return path.reverse();
+        return paths.reverse();
     }
     
     public goHome(): void {
+        this.view = VIEW.HOME;
         this.file.clearInto();
         this.treeDataEventEmitter.fire();
     }
@@ -141,6 +207,39 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                 continue;
             return viewItem;
         }
+    }
+
+    public addFavorite(paths: string[]) : void {
+        if (paths.length <= 0)
+            return;
+        const path = paths.join('_');
+        this.favoriteMap[path] = true;
+    }
+
+    public removeFavorite(paths: string[]) : void {
+        if (paths.length <= 0)
+            return;
+        const path = paths.join('_');
+        delete this.favoriteMap[path];
+    }
+
+    public async favorite(element: VcprojViewItem): Promise<void> {
+        const paths = this.getPath(element);
+        if (element.IsFavorite())
+            this.removeFavorite(paths);
+        else
+            this.addFavorite(paths);
+        this.treeDataEventEmitter.fire();
+    }
+
+    public getView(toString: boolean) : String | VIEW {
+        return toString ? VIEW[this.view] : this.view;
+    }
+
+    public goFavorite(): void {
+        this.view = VIEW.FAVORITE;
+        this.file.clearInto();
+        this.treeDataEventEmitter.fire();
     }
 
 }

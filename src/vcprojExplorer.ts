@@ -13,7 +13,7 @@ export class VcprojExplorer {
             && vscode.workspace.workspaceFolders.length > 0;
     }
 
-    public static init(): void {
+    public static async init(): Promise<void> {
         this.rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
 
         vscode.commands.registerCommand('vcprojExplorer.openVcproj', async () => {
@@ -24,12 +24,16 @@ export class VcprojExplorer {
         vscode.commands.registerCommand("vcprojExplorer.goInto", this.goInto.bind(this));
         vscode.commands.registerCommand("vcprojExplorer.goHome", this.goHome.bind(this));
         vscode.commands.registerCommand("vcprojExplorer.refresh", this.refresh.bind(this));
+        vscode.commands.registerCommand("vcprojExplorer.addFavorite", this.favorite.bind(this));
+        vscode.commands.registerCommand("vcprojExplorer.removeFavorite", this.favorite.bind(this));
+        vscode.commands.registerCommand("vcprojExplorer.goFavorite", this.goFavorite.bind(this));
 
         vscode.window.onDidChangeActiveTextEditor((e) => { this.setViewItemSelected(e.document.fileName); });
 
-        this.openVcropj();
+        await this.openVcropj();
         
         vscode.commands.executeCommand("setContext", "vcprojView.enable", true);
+        vscode.commands.executeCommand("setContext", "vcprojView.view", this.vcprojTreeDataProvider.getView(true));
     }
 
     private static async cmdSetVcprojPath(): Promise<void> {
@@ -92,13 +96,21 @@ export class VcprojExplorer {
             return;
         }
         this.vcprojTreeDataProvider.goInto(value);
-        vscode.commands.executeCommand("setContext", "vcprojView.goInto", true);
-        this.setViewItemSelected();
+        this.updateView();
     }
 
     private static goHome(value: VcprojViewItem): void {
         this.vcprojTreeDataProvider.goHome();
-        vscode.commands.executeCommand("setContext", "vcprojView.goInto", false);
+        this.updateView();
+    }
+
+    private static goFavorite(): void {
+        this.vcprojTreeDataProvider.goFavorite();
+        this.updateView();
+    }
+
+    private static updateView(): void {
+        vscode.commands.executeCommand("setContext", "vcprojView.view", this.vcprojTreeDataProvider.getView(true));
         this.setViewItemSelected();
     }
 
@@ -106,7 +118,10 @@ export class VcprojExplorer {
         this.vcprojTreeDataProvider.refresh();
         this.setViewItemSelected();
     }
-    
+
+    private static favorite(value: VcprojViewItem): void {
+        this.vcprojTreeDataProvider.favorite(value);
+    }
 }
 
 

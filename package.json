@@ -38,6 +38,19 @@
 				"command": "vcprojExplorer.refresh",
 				"title": "Refresh",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "vcprojExplorer.addFavorite",
+				"title": "Add Favorite"
+			},
+			{
+				"command": "vcprojExplorer.removeFavorite",
+				"title": "Remove Favorite"
+			},
+			{
+				"command": "vcprojExplorer.goFavorite",
+				"title": "Go Favorite",
+				"icon": "$(pin)"
 			}
 		],
 		"views": {
@@ -52,6 +65,7 @@
 		"viewsWelcome": [
 			{
 				"view": "vcprojView",
+				"when": "vcprojView.view != 'FAVORITE'",
 				"contents": "Please open the \"vcproj\" file.\n[Open .vcproj](command:vcprojExplorer.openVcproj)"
 			}
 		],
@@ -59,7 +73,12 @@
 			"view/title": [
 				{
 					"command": "vcprojExplorer.goHome",
-					"when": "view == vcprojView && vcprojView.goInto",
+					"when": "view == vcprojView && vcprojView.view != 'HOME'",
+					"group": "navigation"
+				},
+				{
+					"command": "vcprojExplorer.goFavorite",
+					"when": "view == vcprojView && vcprojView.view != 'FAVORITE'",
 					"group": "navigation"
 				},
 				{
@@ -71,7 +90,17 @@
 			"view/item/context": [
 				{
 					"command": "vcprojExplorer.goInto",
-					"when": "viewItem == FILTER",
+					"when": "viewItem == FILTER || viewItem == FAV_FILTER",
+					"group": "navigation"
+				},
+				{
+					"command": "vcprojExplorer.addFavorite",
+					"when": "viewItem == FILTER || viewItem == FILE",
+					"group": "navigation"
+				},
+				{
+					"command": "vcprojExplorer.removeFavorite",
+					"when": "viewItem == FAV_FILTER || viewItem == FAV_FILE",
 					"group": "navigation"
 				}
 			]
