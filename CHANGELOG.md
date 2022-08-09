@@ -6,6 +6,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [0.0.5]
 - Add Refresh
+- Add Favorite
 - Refactor "Go Into"
 
 ## [0.0.4]
