@@ -176,8 +176,13 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
     }
 
     private filterFavorite(viewItem:VcprojViewItem[], parent: VcprojViewItem): VcprojViewItem[] {
-        if (parent && parent.IsFavorite())
-            return viewItem;
+        let checkParent = parent;
+        while (checkParent) {
+            if (checkParent.IsFavorite())
+                return viewItem;
+            checkParent = checkParent.parent;
+        }
+        
         let passItem: VcprojViewItem[] = [];
         for (let item of viewItem) {
             if (item.IsFavorite()) {
