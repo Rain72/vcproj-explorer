@@ -89,7 +89,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         return this.favoriteMap[paths.join('/')] == true;
     }
 
-    private genViewItemFilter(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
+    private genViewItemFilter(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem, ignoreParent:boolean = false): VcprojViewItem[] {
         if (_.isUndefined(files?.Filter))
             return [];
         _.isArray(files.Filter) || (files.Filter = [(files.Filter as VcprojFile.Filter)]);
@@ -102,11 +102,11 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                 this.root,
                 undefined,
                 v,
-                parent
+                ignoreParent ? undefined : parent
             ));
     }
 
-    private genViemItemFile(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem): VcprojViewItem[] {
+    private genViemItemFile(files: VcprojFile.Files | VcprojFile.Filter, parent: VcprojViewItem, ignoreParent:boolean = false): VcprojViewItem[] {
         if (_.isUndefined(files?.File))
             return [];
         _.isArray(files.File) || (files.File = [(files.File as VcprojFile.File)]);
@@ -120,7 +120,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
                     this.root,
                     v.attr?.RelativePath,
                     undefined,
-                    parent
+                    ignoreParent ? undefined : parent
                 );
                 fileItem.command = {
                     command: 'vcprojExplorer.openFile',
@@ -148,8 +148,6 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
         }
         return item;
     }
-
-    private genG
 
     private getPathFilter(files: VcprojFile.Files | VcprojFile.Filter, paths: string[]): [boolean, undefined | VcprojFile.Filter] {
         let filter: VcprojFile.Filter = (files as VcprojFile.Filter);
@@ -193,8 +191,8 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
             // check FAVORITE in FILTER
             if (!item.IsFilter()) 
                 continue;
-            let subItem = this.genViewItemFilter(item.filter, item)
-                            .concat(this.genViemItemFile(item.filter, item));
+            let subItem = this.genViewItemFilter(item.filter, item, true)
+                            .concat(this.genViemItemFile(item.filter, item, true));
             passItem = passItem.concat(this.filterFavorite(subItem, undefined)); //recursive
         }
         return passItem;
@@ -235,7 +233,7 @@ export class VcprojFileTreeDataProvider implements vscode.TreeDataProvider<Vcpro
     public async find(fileName: string, element ?: VcprojViewItem): Promise<VcprojViewItem> {
         let children = await this.getChildren(element);
         for (let viewItem of children) {
-            if (viewItem.contextValue == 'FILTER')
+            if (viewItem.contextValue == 'FILTER' || viewItem.contextValue == 'FAV_FILTER')
             {
                 let find = await this.find(fileName, viewItem);
                 if (!find)
